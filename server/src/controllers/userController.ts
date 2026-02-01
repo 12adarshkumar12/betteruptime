@@ -1,12 +1,6 @@
 import express from 'express'
-import { PrismaClient } from '../generated/prisma/client'
-import { PrismaPg } from "@prisma/adapter-pg";
-import type { authenticatedRequest } from '../interfaces/interface';
-
-const adapter = new PrismaPg({
-  connectionString: process.env.DATABASE_URL,
-})
-const prisma = new PrismaClient({adapter}) 
+import { newClient } from '../../../packages/db/src/index'
+import type { authenticatedRequest } from '../interfaces/interface'
 
 export async function websitesOverview(req: authenticatedRequest,res: express.Response) {
   const user_id = req.user_id 
@@ -18,7 +12,7 @@ export async function websitesOverview(req: authenticatedRequest,res: express.Re
   }
 
   try {
-    const user = await prisma.user.findUnique({
+    const user = await newClient.user.findUnique({
         where: { id: user_id },
         select: {
             email: true,
@@ -53,7 +47,7 @@ export async function websitesOverview(req: authenticatedRequest,res: express.Re
       return res.status(404).json({ message: "User not found" })
     }
 
-    const websites = user.websites.map((website) => {
+    const websites = user.websites.map((website: any) => {
       const regionMap = new Map<string, any>()
 
       for (const tick of website.statusticks) {
@@ -89,7 +83,7 @@ export async function loadWebsiteData(req: authenticatedRequest, res: express.Re
         message: "userid or websiteid param is missing"
     })
     try {
-        const regions = await prisma.region.findMany({
+        const regions = await newClient.region.findMany({
             select: {
                 id: true,
                 name: true,
@@ -97,8 +91,8 @@ export async function loadWebsiteData(req: authenticatedRequest, res: express.Re
         })
 
         const websiteTicks = await Promise.all(
-            regions.map(async (region) => {
-                const ticks = await prisma.websiteTicks.findMany({
+            regions.map(async (region: any) => {
+                const ticks = await newClient.websiteTicks.findMany({
                     where: {
                         website_id: website_id,
                         region_id: region.id,
@@ -144,7 +138,7 @@ export async function addNewWebsite(req: authenticatedRequest, res: express.Resp
         })
     }
     try {
-        const exist = await prisma.website.findFirst({
+        const exist = await newClient.website.findFirst({
             where: {
                 owner_id: user_id,
                 url: new_url
@@ -153,7 +147,7 @@ export async function addNewWebsite(req: authenticatedRequest, res: express.Resp
         if (exist) return res.status(200).json({
             message: "URL already linked with you"
         })
-        const result = await prisma.website.create({
+        const result = await newClient.website.create({
             data: {
                 owner_id: user_id,
                 url: new_url
@@ -180,7 +174,7 @@ export async function removeWebsite(req: authenticatedRequest, res: express.Resp
         })
     }
     try {
-        const exist = await prisma.website.findFirst({
+        const exist = await newClient.website.findFirst({
             select: {
                 id: true
             },
@@ -192,7 +186,7 @@ export async function removeWebsite(req: authenticatedRequest, res: express.Resp
         if (!exist) return res.status(200).json({
             message: "No such URL linked with given user"
         })
-        await prisma.website.delete({
+        await newClient.website.delete({
             where: {
                 id: exist.id
             }

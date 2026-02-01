@@ -1,14 +1,8 @@
 import express from 'express'
 import { z } from 'zod'
-import { PrismaClient } from '../generated/prisma/client'
-import { PrismaPg } from "@prisma/adapter-pg";
+import { newClient } from '../../../packages/db/src/index'
 import bcrypt from 'bcrypt'
 import jwt from 'jsonwebtoken'
-
-const adapter = new PrismaPg({
-  connectionString: process.env.DATABASE_URL,
-})
-const prisma = new PrismaClient({adapter}) 
 
 const User = z.object({
     user_email: z.string(),
@@ -19,7 +13,7 @@ export async function signinController(req: express.Request, res: express.Respon
     let { email, password } = req.body;
     if (!email) return res.status(401).json({message : "Email field is empty"})
     try {
-        const user = await prisma.user.findFirst({
+        const user = await newClient.user.findFirst({
             where: { email },
             select: {
                 id: true,
@@ -81,7 +75,7 @@ export async function signupController(req: express.Request, res: express.Respon
         hashPassword = bcrypt.hashSync(password, 4)
     }
     try {
-        const user = await prisma.user.findUnique({
+        const user = await newClient.user.findUnique({
             where: {
                 email: user_email
             },
@@ -97,7 +91,7 @@ export async function signupController(req: express.Request, res: express.Respon
                 data: user
             })
         }
-        const createdUser = await prisma.user.create({
+        const createdUser = await newClient.user.create({
             data: {
                 email: user_email,
                 password: hashPassword
@@ -115,5 +109,5 @@ export async function signupController(req: express.Request, res: express.Respon
 }
 
 export async function changePassword(req: express.Request, res: express.Response){
-
+    
 }
